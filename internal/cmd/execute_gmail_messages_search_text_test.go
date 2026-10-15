@@ -314,3 +314,56 @@ func TestExecute_GmailMessagesSearch_AppliesSystemLabelFilters(t *testing.T) {
 	}
 	assertSameStrings(t, gotLabels, []string{"SPAM", "UNREAD"})
 }
+
+func TestExecute_GmailMessagesSearch_LeavesNegatedAndDisjoinedSystemLabelsToGmail(t *testing.T) {
+	tests := []struct {
+		name       string
+		query      string
+		wantLabels []string
+	}{
+		{name: "negated group", query: "-(zzqx in:inbox) in:sent", wantLabels: []string{"SENT"}},
+		{name: "pipe disjunction", query: "in:sent | in:inbox", wantLabels: nil},
+		{name: "OR against a bracket", query: "in:sent OR(in:inbox)", wantLabels: nil},
+		{name: "complete inline NOT group keeps the next positive term", query: "in:spam NOT(in:inbox) is:unread", wantLabels: []string{"SPAM", "UNREAD"}},
+		{name: "quoted word not is a search word", query: `in:spam "not" is:unread`, wantLabels: []string{"SPAM", "UNREAD"}},
+		{name: "quoted word OR is a search word", query: `in:spam is:unread "OR"`, wantLabels: []string{"SPAM", "UNREAD"}},
+		{name: "negated group closed by an inline NOT keeps the next positive term", query: "in:spam -(foo NOT(bar)) is:unread", wantLabels: []string{"SPAM", "UNREAD"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotQuery string
+			var gotLabels []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				path := r.URL.Path
+				switch {
+				case strings.Contains(path, "/users/me/messages") && !strings.Contains(path, "/users/me/messages/"):
+					gotQuery = r.URL.Query().Get("q")
+					gotLabels = r.URL.Query()["labelIds"]
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"messages": []map[string]any{},
+					})
+					return
+				default:
+					http.NotFound(w, r)
+					return
+				}
+			}))
+			defer srv.Close()
+
+			result := executeWithGmailTestService(
+				t,
+				[]string{"--plain", "--account", "a@b.com", "gmail", "messages", "search", "--max", "1000", "--", tt.query},
+				newGmailServiceFromServer(t, srv),
+			)
+			if result.err != nil {
+				t.Fatalf("Execute: %v\nstderr=%q", result.err, result.stderr)
+			}
+
+			if gotQuery != tt.query {
+				t.Fatalf("unexpected query: %q", gotQuery)
+			}
+			assertSameStrings(t, gotLabels, tt.wantLabels)
+		})
+	}
+}
