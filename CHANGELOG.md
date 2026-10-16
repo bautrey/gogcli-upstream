@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.45.1 - Unreleased
+
 ## 0.45.0 - 2026-10-16
 
 **Highlights:** Preserve Gmail search results for negated and OR queries, warn about unmatched JSON selections, and improve reply formatting.
