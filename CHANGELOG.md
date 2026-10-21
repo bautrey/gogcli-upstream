@@ -9,6 +9,7 @@
 - Dependencies: update Vitest and Cloudflare Workers types within the worker’s 24-hour release cooldown.
 - Google APIs: add `GOG_GOOGLE_API_BASE_URL` to send `*.googleapis.com` requests to a test server, emulator, proxy, or relay that adds credentials outside gog; requests keep path and query, pass the original host as `X-Forwarded-Host`, carry no gog credentials, and refuse cross-origin redirects. (#1225, #1226) — thanks @km-tr.
 - Gmail: add `--note-html` and `--note-html-file` to forwards and preserve plain-note line breaks in HTML output. (#1215) — thanks @malob.
+- Gmail: lay out the forwarded-message header block the way Gmail Web does: plain text with the sender's name in bold, `Name <email>` (or `<email>`) for the sender and each recipient with addresses linked in HTML, and two blank lines before the original body. (#1236) — thanks @malob.
 
 - Auth: accept `gog auth <email>` as shorthand for `gog auth add <email>`; bare `gog auth` and mistyped subcommands keep their existing errors. (#1221)
 
